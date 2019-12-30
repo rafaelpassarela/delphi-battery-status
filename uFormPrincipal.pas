@@ -108,6 +108,9 @@ begin
     Result := Format('Desconhecido [%d].', [AFlag]);
   end;
 
+  if (not (AFlag in [8,10])) and (GaugeStatus.Progress <= 10) then
+    lStatusColor := C_COR_BATERIA_CRITICA;
+
   // avoid form blink
   if Self.Color <> lStatusColor then
     Self.Color := lStatusColor;
@@ -158,9 +161,9 @@ end;
 
 function TForm1.SecToTime(const ASec: Cardinal): string;
 var
-  H, M, S: Integer;
+  H, M, S: Cardinal;
 begin
-  if ASec < 0 then
+  if ASec <= 0 then
     Exit('N/A -')
   else if ASec > 5000000000 then
     Exit('N/A +');
@@ -197,17 +200,23 @@ begin
       if GaugeStatus.Progress > FLastPercent then
       begin
         lPercDif := GaugeStatus.Progress - FLastPercent;
+        lRest := 100 - GaugeStatus.Progress;
         FStatusMens := 'carga completa';
       end else
       begin
         lPercDif := FLastPercent - GaugeStatus.Progress;
+        lRest := GaugeStatus.Progress;
         FStatusMens := 'descarregar.';
       end;
 
-      lRest := 100 - GaugeStatus.Progress;
-      lRest := lRest * lTimeDif;
+      lRest := (lRest * lTimeDif) * lPercDif;
 
-      FStatusMens := 'Aprox. ' + SecToTime(lRest) + ' para ' + FStatusMens;
+      FStatusMens := Format('Aproximadamente %s para %s%s%d%% a cada %d segundo(s)', [
+        SecToTime(lRest),
+        FStatusMens,
+        sLineBreak,
+        lPercDif,
+        lTimeDif ]);
     end;
     FLastPercent := GaugeStatus.Progress;
     FLastTime := Now;

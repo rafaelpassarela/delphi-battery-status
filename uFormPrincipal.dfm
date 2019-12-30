@@ -4,7 +4,7 @@ object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = 'Battery Status'
-  ClientHeight = 201
+  ClientHeight = 221
   ClientWidth = 259
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -17,7 +17,7 @@ object Form1: TForm1
   OnShow = FormShow
   DesignSize = (
     259
-    201)
+    221)
   PixelsPerInch = 96
   TextHeight = 13
   object LabelInterval: TLabel
@@ -38,7 +38,7 @@ object Form1: TForm1
     Left = 8
     Top = 127
     Width = 242
-    Height = 67
+    Height = 87
     Anchors = [akLeft, akTop, akRight, akBottom]
     AutoSize = False
     Caption = 'Aguardando...'
