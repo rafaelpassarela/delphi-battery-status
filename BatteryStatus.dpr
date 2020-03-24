@@ -2,13 +2,14 @@ program BatteryStatus;
 
 uses
   Vcl.Forms,
-  uFormPrincipal in 'uFormPrincipal.pas' {Form1};
+  uFormPrincipal in 'uFormPrincipal.pas' {FormBatteryStatus},
+  uPowerManagement in 'uPowerManagement.pas';
 
 {$R *.res}
 
 begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
-  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TFormBatteryStatus, FormBatteryStatus);
   Application.Run;
 end.

@@ -5,21 +5,38 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Samples.Spin,
-  System.IniFiles, Vcl.ExtCtrls, Vcl.Samples.Gauges, System.DateUtils;
+  System.IniFiles, Vcl.ExtCtrls, Vcl.Samples.Gauges, System.DateUtils,
+  Vcl.Buttons, System.ImageList, Vcl.ImgList, System.Actions, Vcl.ActnList,
+  uPowerManagement;
 
 type
-  TForm1 = class(TForm)
+  TFormBatteryStatus = class(TForm)
     TimerStatus: TTimer;
     LabelInterval: TLabel;
     SpinEditInterval: TSpinEdit;
     CheckBoxStayOnTop: TCheckBox;
     GaugeStatus: TGauge;
     LabelStatus: TLabel;
+    ImageListActions: TImageList;
+    PanelActions: TPanel;
+    SpeedButtonPowerOff: TSpeedButton;
+    ActionListPoweControl: TActionList;
+    ActionPowerOff: TAction;
+    SpeedButtonRestart: TSpeedButton;
+    SpeedButtonHibernate: TSpeedButton;
+    SpeedButtonSuspend: TSpeedButton;
+    ActionSuspend: TAction;
+    ActionHibernate: TAction;
+    ActionRestart: TAction;
     procedure FormCreate(Sender: TObject);
     procedure SpinEditIntervalChange(Sender: TObject);
     procedure CheckBoxStayOnTopClick(Sender: TObject);
     procedure TimerStatusTimer(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure ActionPowerOffExecute(Sender: TObject);
+    procedure ActionSuspendExecute(Sender: TObject);
+    procedure ActionRestartExecute(Sender: TObject);
+    procedure ActionHibernateExecute(Sender: TObject);
   private
     { Private declarations }
     FConfigName : string;
@@ -33,6 +50,7 @@ type
     procedure UpdateStatusControls;
     procedure GetBatteryLevel;
 
+    function ShowConfirmatinDialog(const AMessage : string) : Boolean;
     function SecToTime(const ASec : Cardinal) : string;
     function GetBatteryFlag(const AFlag : Integer) : string;
   public
@@ -40,7 +58,7 @@ type
   end;
 
 var
-  Form1: TForm1;
+  FormBatteryStatus: TFormBatteryStatus;
 
 implementation
 
@@ -52,12 +70,36 @@ const
 
 {$R *.dfm}
 
-procedure TForm1.CheckBoxStayOnTopClick(Sender: TObject);
+procedure TFormBatteryStatus.ActionHibernateExecute(Sender: TObject);
+begin
+  if ShowConfirmatinDialog('Deseja realmente hibernar?') then
+    TPowerManagement.Hibernate;
+end;
+
+procedure TFormBatteryStatus.ActionPowerOffExecute(Sender: TObject);
+begin
+  if ShowConfirmatinDialog('Deseja realmente desligar?') then
+    TPowerManagement.PowerOff;
+end;
+
+procedure TFormBatteryStatus.ActionRestartExecute(Sender: TObject);
+begin
+  if ShowConfirmatinDialog('Deseja realmente reiniciar?') then
+    TPowerManagement.Restart;
+end;
+
+procedure TFormBatteryStatus.ActionSuspendExecute(Sender: TObject);
+begin
+  if ShowConfirmatinDialog('Deseja realmente suspender?') then
+    TPowerManagement.Suspend;
+end;
+
+procedure TFormBatteryStatus.CheckBoxStayOnTopClick(Sender: TObject);
 begin
   DoSave;
 end;
 
-procedure TForm1.DoSave;
+procedure TFormBatteryStatus.DoSave;
 begin
   if Self.Active then
     SaveIni;
@@ -65,7 +107,7 @@ begin
   UpdateStatusControls;
 end;
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TFormBatteryStatus.FormCreate(Sender: TObject);
 begin
   FConfigName := StringReplace(Application.ExeName, '.exe', '.ini', [rfIgnoreCase]);
   LoadIni;
@@ -73,14 +115,18 @@ begin
   UpdateStatusControls;
   FLastPercent := -1;
   TimerStatusTimer( TimerStatus );
+
+  ActionHibernate.Enabled := TPowerManagement.CanHibernate;
+  ActionSuspend.Enabled := TPowerManagement.CanSuspend;
+  ActionPowerOff.Enabled := TPowerManagement.CanShutdown;
 end;
 
-procedure TForm1.FormShow(Sender: TObject);
+procedure TFormBatteryStatus.FormShow(Sender: TObject);
 begin
   TimerStatus.Enabled := True;
 end;
 
-function TForm1.GetBatteryFlag(const AFlag: Integer): string;
+function TFormBatteryStatus.GetBatteryFlag(const AFlag: Integer): string;
 var
   lStatusColor : TColor;
 begin
@@ -116,7 +162,7 @@ begin
     Self.Color := lStatusColor;
 end;
 
-procedure TForm1.GetBatteryLevel;
+procedure TFormBatteryStatus.GetBatteryLevel;
 var
   lSysPowerStatus: TSystemPowerStatus;
   lStatus: string;
@@ -137,7 +183,7 @@ begin
     + FStatusMens;
 end;
 
-procedure TForm1.LoadIni;
+procedure TFormBatteryStatus.LoadIni;
 begin
   with TIniFile.Create(FConfigName) do
   try
@@ -148,7 +194,7 @@ begin
   end;
 end;
 
-procedure TForm1.SaveIni;
+procedure TFormBatteryStatus.SaveIni;
 begin
   with TIniFile.Create(FConfigName) do
   try
@@ -159,7 +205,7 @@ begin
   end;
 end;
 
-function TForm1.SecToTime(const ASec: Cardinal): string;
+function TFormBatteryStatus.SecToTime(const ASec: Cardinal): string;
 var
   H, M, S: Cardinal;
 begin
@@ -178,12 +224,18 @@ begin
    Result := Format('%2.2d:%2.2d:%2.2d', [H, M, S]);
 end;
 
-procedure TForm1.SpinEditIntervalChange(Sender: TObject);
+function TFormBatteryStatus.ShowConfirmatinDialog(
+  const AMessage: string): Boolean;
+begin
+  Result := Application.MessageBox(PChar(AMessage), 'Atenção', MB_YESNO + MB_ICONWARNING) = IDYES;
+end;
+
+procedure TFormBatteryStatus.SpinEditIntervalChange(Sender: TObject);
 begin
   DoSave;
 end;
 
-procedure TForm1.TimerStatusTimer(Sender: TObject);
+procedure TFormBatteryStatus.TimerStatusTimer(Sender: TObject);
 var
   lTimeDif : Int64;
   lPercDif : Integer;
@@ -223,7 +275,7 @@ begin
   end;
 end;
 
-procedure TForm1.UpdateStatusControls;
+procedure TFormBatteryStatus.UpdateStatusControls;
 begin
   TimerStatus.Interval := SpinEditInterval.Value * 1000;
   if CheckBoxStayOnTop.Checked then
