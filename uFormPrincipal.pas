@@ -10,24 +10,37 @@ uses
   uPowerManagement;
 
 type
+  TPinMode = (piDefault, piOn, piOff);
+
   TFormBatteryStatus = class(TForm)
-    TimerStatus: TTimer;
-    LabelInterval: TLabel;
-    SpinEditInterval: TSpinEdit;
-    CheckBoxStayOnTop: TCheckBox;
-    GaugeStatus: TGauge;
-    LabelStatus: TLabel;
-    ImageListActions: TImageList;
     PanelActions: TPanel;
     SpeedButtonPowerOff: TSpeedButton;
-    ActionListPoweControl: TActionList;
-    ActionPowerOff: TAction;
     SpeedButtonRestart: TSpeedButton;
     SpeedButtonHibernate: TSpeedButton;
     SpeedButtonSuspend: TSpeedButton;
+    PanelNormal: TPanel;
+    LabelInterval: TLabel;
+    GaugeStatus: TGauge;
+    LabelStatus: TLabel;
+    SpinEditInterval: TSpinEdit;
+    CheckBoxStayOnTop: TCheckBox;
+    TimerStatus: TTimer;
+    ImageListActions: TImageList;
+    ActionListPoweControl: TActionList;
+    ActionPowerOff: TAction;
     ActionSuspend: TAction;
     ActionHibernate: TAction;
     ActionRestart: TAction;
+    ImageListModes: TImageList;
+    ActionListModes: TActionList;
+    ActionPinOff: TAction;
+    ActionPinOn: TAction;
+    SpeedButtonMode: TSpeedButton;
+    PanelReduzido: TPanel;
+    GaugeStatusReduzido: TGauge;
+    LabelStatusReduzido: TLabel;
+    SpeedButtonClose: TSpeedButton;
+    ActionClose: TAction;
     procedure FormCreate(Sender: TObject);
     procedure SpinEditIntervalChange(Sender: TObject);
     procedure CheckBoxStayOnTopClick(Sender: TObject);
@@ -37,12 +50,18 @@ type
     procedure ActionSuspendExecute(Sender: TObject);
     procedure ActionRestartExecute(Sender: TObject);
     procedure ActionHibernateExecute(Sender: TObject);
+    procedure ActionPinOffExecute(Sender: TObject);
+    procedure ActionPinOnExecute(Sender: TObject);
+    procedure ActionCloseExecute(Sender: TObject);
+    procedure FormMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
   private
     { Private declarations }
     FConfigName : string;
     FLastPercent : Integer;
     FLastTime : TDateTime;
     FStatusMens : string;
+    FPinMode : TPinMode;
     procedure SaveIni;
     procedure LoadIni;
 
@@ -53,8 +72,10 @@ type
     function ShowConfirmatinDialog(const AMessage : string) : Boolean;
     function SecToTime(const ASec : Cardinal) : string;
     function GetBatteryFlag(const AFlag : Integer) : string;
+    procedure SetPinMode(const Value: TPinMode);
   public
     { Public declarations }
+    property PinMode : TPinMode read FPinMode write SetPinMode;
   end;
 
 var
@@ -70,10 +91,27 @@ const
 
 {$R *.dfm}
 
+procedure TFormBatteryStatus.ActionCloseExecute(Sender: TObject);
+begin
+  Close;
+end;
+
 procedure TFormBatteryStatus.ActionHibernateExecute(Sender: TObject);
 begin
   if ShowConfirmatinDialog('Deseja realmente hibernar?') then
     TPowerManagement.Hibernate;
+end;
+
+procedure TFormBatteryStatus.ActionPinOffExecute(Sender: TObject);
+begin
+  // off deixa on
+  PinMode := piOn;
+end;
+
+procedure TFormBatteryStatus.ActionPinOnExecute(Sender: TObject);
+begin
+  // on deixa off
+  PinMode := piOff;
 end;
 
 procedure TFormBatteryStatus.ActionPowerOffExecute(Sender: TObject);
@@ -109,7 +147,13 @@ end;
 
 procedure TFormBatteryStatus.FormCreate(Sender: TObject);
 begin
+  PanelReduzido.Left := PanelNormal.Left;
+  PanelReduzido.Top := PanelNormal.Top;
+
+  FPinMode := piDefault;
+
   FConfigName := StringReplace(Application.ExeName, '.exe', '.ini', [rfIgnoreCase]);
+
   LoadIni;
 
   UpdateStatusControls;
@@ -119,6 +163,18 @@ begin
   ActionHibernate.Enabled := TPowerManagement.CanHibernate;
   ActionSuspend.Enabled := TPowerManagement.CanSuspend;
   ActionPowerOff.Enabled := TPowerManagement.CanShutdown;
+end;
+
+procedure TFormBatteryStatus.FormMouseDown(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+const
+  SC_DRAGMOVE = $F012;
+begin
+  if Button = mbLeft then
+  begin
+    ReleaseCapture;
+    Perform(WM_SYSCOMMAND, SC_DRAGMOVE, 0);
+  end;
 end;
 
 procedure TFormBatteryStatus.FormShow(Sender: TObject);
@@ -175,12 +231,16 @@ begin
     lStatus := 'Rodando na bateria';
 
   GaugeStatus.Progress := lSysPowerStatus.BatteryLifePercent;
+  GaugeStatusReduzido.Progress := GaugeStatus.Progress;
 
   LabelStatus.Caption := lStatus + sLineBreak
     + 'Life Time: ' + SecToTime(lSysPowerStatus.BatteryLifeTime) + sLineBreak
     + 'Full Life Time: ' + SecToTime(lSysPowerStatus.BatteryFullLifeTime) + sLineBreak
     + GetBatteryFlag(lSysPowerStatus.BatteryFlag) + sLineBreak
     + FStatusMens;
+
+  LabelStatusReduzido.Caption := FStatusMens;
+  LabelStatusReduzido.Hint := LabelStatus.Caption;
 end;
 
 procedure TFormBatteryStatus.LoadIni;
@@ -189,6 +249,7 @@ begin
   try
     SpinEditInterval.Value := ReadInteger('config', 'interval', 3);
     CheckBoxStayOnTop.Checked := ReadBool('config', 'stay.on.top', True);
+    PinMode := TPinMode(ReadInteger('config', 'pin.mode', 0));
   finally
     Free;
   end;
@@ -199,6 +260,7 @@ begin
   with TIniFile.Create(FConfigName) do
   try
     WriteInteger('config', 'interval', SpinEditInterval.Value);
+    WriteInteger('config', 'pin.mode', Ord(PinMode));
     WriteBool('config', 'stay.on.top', CheckBoxStayOnTop.Checked);
   finally
     Free;
@@ -224,6 +286,51 @@ begin
    Result := Format('%2.2d:%2.2d:%2.2d', [H, M, S]);
 end;
 
+procedure TFormBatteryStatus.SetPinMode(const Value: TPinMode);
+begin
+  if (Value <> FPinMode) or (Value = piDefault) then
+  begin
+    FPinMode := Value;
+
+    if Value = piOn then
+    begin
+      PanelNormal.Visible := False;
+      PanelReduzido.Visible := True;
+      SpeedButtonClose.Visible := True;
+      SpeedButtonMode.Action := ActionPinOn;
+
+      SpeedButtonMode.Top := 26;
+      SpeedButtonClose.Top := 3;
+
+      BorderStyle := bsNone;
+
+      Self.Width := 528;
+      Self.Height := 48;
+
+      PanelActions.Left := 282;
+      PanelActions.Top := 3;
+    end else
+    begin
+      PanelNormal.Visible := True;
+      PanelReduzido.Visible := False;
+      SpeedButtonClose.Visible := False;
+      SpeedButtonMode.Action := ActionPinOff;
+
+      SpeedButtonMode.Top := 3;
+
+      BorderStyle := bsSingle;
+
+      Self.Width := 287;
+      Self.Height := 297;
+
+      PanelActions.Left := 33;
+      PanelActions.Top := 220;
+    end;
+
+    DoSave;
+  end;
+end;
+
 function TFormBatteryStatus.ShowConfirmatinDialog(
   const AMessage: string): Boolean;
 begin
@@ -242,7 +349,7 @@ var
   lRest : Integer;
 begin
   GetBatteryLevel;
-  if FLastPercent <> GaugeStatus.Progress then
+  if (FLastPercent <> GaugeStatus.Progress) then
   begin
     if FLastPercent <> -1 then
     begin
@@ -276,12 +383,17 @@ begin
 end;
 
 procedure TFormBatteryStatus.UpdateStatusControls;
+var
+  lTipoForm: TFormStyle;
 begin
   TimerStatus.Interval := SpinEditInterval.Value * 1000;
   if CheckBoxStayOnTop.Checked then
-    Self.FormStyle := fsStayOnTop
+    lTipoForm := fsStayOnTop
   else
-    Self.FormStyle := fsNormal;
+    lTipoForm := fsNormal;
+
+  if Self.FormStyle <> lTipoForm then
+    Self.FormStyle := lTipoForm;
 end;
 
 end.
