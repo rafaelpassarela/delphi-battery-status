@@ -41,6 +41,8 @@ type
     LabelStatusReduzido: TLabel;
     SpeedButtonClose: TSpeedButton;
     ActionClose: TAction;
+    SpeedButton1: TSpeedButton;
+    ActionScreenPowerOff: TAction;
     procedure FormCreate(Sender: TObject);
     procedure SpinEditIntervalChange(Sender: TObject);
     procedure CheckBoxStayOnTopClick(Sender: TObject);
@@ -55,6 +57,7 @@ type
     procedure ActionCloseExecute(Sender: TObject);
     procedure FormMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
+    procedure ActionScreenPowerOffExecute(Sender: TObject);
   private
     { Private declarations }
     FConfigName : string;
@@ -87,6 +90,14 @@ const
   C_COR_SEM_BATERIA = $00AEFFFF;
   C_COR_BATERIA_CARREGANDO = $00E1FFD2;
   C_COR_BATERIA_CRITICA = $008080FF;
+  C_PIN_WIDTH  = 591;
+  C_PIN_HEIGHT = 48;
+  C_PIN_PANEL_LEFT = 282;
+  C_PIN_PANEL_TOP  = 3;
+  C_NORMAL_WIDTH  = 350;
+  C_NORMAL_HEIGHT = 297;
+  C_NORMAL_PANEL_LEFT = 33;
+  C_NORMAL_PANEL_TOP  = 220;
 
 
 {$R *.dfm}
@@ -124,6 +135,11 @@ procedure TFormBatteryStatus.ActionRestartExecute(Sender: TObject);
 begin
   if ShowConfirmatinDialog('Deseja realmente reiniciar?') then
     TPowerManagement.Restart;
+end;
+
+procedure TFormBatteryStatus.ActionScreenPowerOffExecute(Sender: TObject);
+begin
+  TPowerManagement.ScreenPowerOff;
 end;
 
 procedure TFormBatteryStatus.ActionSuspendExecute(Sender: TObject);
@@ -304,11 +320,11 @@ begin
 
       BorderStyle := bsNone;
 
-      Self.Width := 528;
-      Self.Height := 48;
+      Self.Width  := C_PIN_WIDTH;
+      Self.Height := C_PIN_HEIGHT;
 
-      PanelActions.Left := 282;
-      PanelActions.Top := 3;
+      PanelActions.Left := C_PIN_PANEL_LEFT;
+      PanelActions.Top  := C_PIN_PANEL_TOP;
     end else
     begin
       PanelNormal.Visible := True;
@@ -320,11 +336,11 @@ begin
 
       BorderStyle := bsSingle;
 
-      Self.Width := 287;
-      Self.Height := 297;
+      Self.Width := C_NORMAL_WIDTH;
+      Self.Height := C_NORMAL_HEIGHT;
 
-      PanelActions.Left := 33;
-      PanelActions.Top := 220;
+      PanelActions.Left := C_NORMAL_PANEL_LEFT;
+      PanelActions.Top := C_NORMAL_PANEL_TOP;
     end;
 
     DoSave;
