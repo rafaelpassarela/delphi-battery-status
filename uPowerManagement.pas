@@ -20,7 +20,7 @@ unit uPowerManagement;
 interface
 
 uses
-  System.SysUtils, Winapi.Windows;
+  System.SysUtils, Winapi.Windows, Vcl.Forms, Winapi.Messages;
 
 type
   TPowerManagement = class
@@ -37,6 +37,7 @@ type
     class procedure Restart;
     class procedure Suspend;
     class procedure Hibernate;
+    class procedure ScreenPowerOff;
   end;
 
 // NT Defined Privileges from winnt.h
@@ -159,6 +160,22 @@ class procedure TPowerManagement.Restart;
 begin
   NTSetPrivilege(SE_SHUTDOWN_NAME, True);
   ExitWindowsEx(EWX_REBOOT or EWX_FORCE, 0);
+end;
+
+class procedure TPowerManagement.ScreenPowerOff;
+const
+  MONITOR_ON      = -1;
+  MONITOR_OFF     =  2;
+  MONITOR_STANDBY =  1;
+begin
+// To turn off the monitor
+  SendMessage(Application.Handle, WM_SYSCOMMAND, SC_MONITORPOWER, MONITOR_OFF);
+
+// To turn on the monitor
+//  SendMessage(Application.Handle, WM_SYSCOMMAND, SC_MONITORPOWER, MONITOR_ON);
+
+// To set the monitor on standby
+//  SendMessage(Application.Handle, WM_SYSCOMMAND, SC_MONITORPOWER, MONITOR_STANDBY);
 end;
 
 class procedure TPowerManagement.Suspend;
